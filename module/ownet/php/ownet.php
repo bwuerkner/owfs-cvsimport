@@ -100,7 +100,7 @@ class OWNet{
 	protected $link_connected=false;
 	protected $timeout=0;
 	protected $use_swig_dir=true;
-
+	
 	function __construct($host='',$timeout=5,$use_swig_dir=true){
 		// just set default configurations
 		$this->setHost($host);
@@ -119,7 +119,7 @@ class OWNet{
 	function getUseSwigDir(){
 		return($this->use_swig_dir);
 	}
-	function setHost($host=''){	
+	function setHost($host=''){
 		// host must be "anything://host:port" or "anything://host" OR 'anything that don't parse_url and get default values'
 		// use "stream://host:port" or "ow-stream://host:port" to prefer stream instead sockets
 		$tmp_path	=@parse_url($host);	// get URL information from host
@@ -130,7 +130,7 @@ class OWNet{
 		$this->port	=(int)	(!isset($tmp_path['port'])?OWNET_DEFAULT_PORT:$tmp_path['port']);	// if don't have port get default port
 		$prefer_sock	=(isset($tmp_path['scheme'])?
 			($tmp_path['scheme']!='stream' && $tmp_path['scheme']!='ow-stream' &&
-			 $tmp_path['scheme']!='stream-udp' && $tmp_path['scheme']!='ow-stream-udp')
+				$tmp_path['scheme']!='stream-udp' && $tmp_path['scheme']!='ow-stream-udp')
 			:true);	// check if prefer using streams instead socket
 		if (strpos($tmp_path['scheme'],'udp')!==false)
 			$this->sock_type=OWNET_LINK_TYPE_UDP;
@@ -138,7 +138,7 @@ class OWNet{
 			$this->sock_type=OWNET_LINK_TYPE_TCP;
 		unset($tmp_path);
 		
-		if (function_exists('socket_connect') && $prefer_sock){	
+		if (function_exists('socket_connect') && $prefer_sock){
 			$this->link_type=OWNET_LINK_TYPE_SOCKET;	// prefer socks
 		}else{
 			$this->link_type=OWNET_LINK_TYPE_STREAM;	// prefer stream
@@ -148,7 +148,7 @@ class OWNet{
 	}
 	function getHost(){
 		// return and URI that can be used with setHost again
-		if ($this->link_type==OWNET_LINK_TYPE_STREAM)	
+		if ($this->link_type==OWNET_LINK_TYPE_STREAM)
 			return('ow-stream'.($this->sock_type==OWNET_LINK_TYPE_UDP?'-udp':'').'://'.$this->host.':'.$this->port);	// using streams
 		return('ow'.($this->sock_type==OWNET_LINK_TYPE_UDP?'-udp':'').'://'.$this->host.':'.$this->port);			// using sockets if possible
 	}
@@ -269,10 +269,12 @@ class OWNet{
 		$t2=($this->timeout*1000000)%1000000;
 		while ($num_changed_sockets<=0){	// can loop forever? owserver must send something! or disconnect!
 			$read=array($this->link);
+			$write = NULL;
+			$except = NULL;
 			if ($this->link_type==OWNET_LINK_TYPE_SOCKET)
-				$num_changed_sockets = socket_select($read, $write = NULL, $except = NULL, $t1,$t2);	// use socket_select
+				$num_changed_sockets = socket_select($read, $write, $except, $t1,$t2);	// use socket_select
 			else
-				$num_changed_sockets = stream_select($read, $write = NULL, $except = NULL, $t1,$t2);	// use stream_select
+				$num_changed_sockets = stream_select($read, $write, $except, $t1,$t2);	// use stream_select
 			if ($num_changed_sockets===false){	// error handling select
 				$this->disconnect();
 				trigger_error("Error handling get_msg#1",E_USER_NOTICE);
@@ -311,10 +313,12 @@ class OWNet{
 		$num_changed_sockets=0;
 		while ($num_changed_sockets<=0){
 			$write=array($this->link);
+			$read = NULL;
+			$except = NULL;
 			if ($this->link_type==OWNET_LINK_TYPE_SOCKET)
-				$num_changed_sockets = socket_select($read = NULL, $write , $except = NULL, 0,1000);	// use socket_select
+				$num_changed_sockets = socket_select($read, $write , $except, 0,1000);	// use socket_select
 			else
-				$num_changed_sockets = stream_select($read = NULL, $write , $except = NULL, 0,1000);	// use stream_select
+				$num_changed_sockets = stream_select($read, $write , $except, 0,1000);	// use stream_select
 			if ($num_changed_sockets===false){		// error handling
 				$this->disconnect();
 				trigger_error("Error handling send_msg#1",E_USER_NOTICE);
@@ -365,14 +369,14 @@ class OWNet{
 		//		OWNET_MSG_PRESENCE	check presence output is true or false
 		// return_full_info_array	if true return everything from comunication and unit if variables is an temperature, ['data'] is returned data and ['data_php'] is an parsed data in (double) or (string) types
 		// parse_php_type		if true try to get right data_php variable type
-	
+		
 		// return NULL on error or not founded
 		// return an array on OWNET_MSG_DIR or when return_full_info_array=true
 		// return true or false when OWNET_MSG_PRESENCE
-	
+		
 		$path=trim($path);	// trim path
 		if ($get_type==OWNET_MSG_READ_ANY){
-					// getting first read
+			// getting first read
 			$ret=$this->get($path,OWNET_MSG_READ,$return_full_info_array,$parse_php_type);
 			if ($ret!==NULL)
 				return($ret);	// ok we get and result
@@ -429,7 +433,7 @@ class OWNet{
 			$ret=$this->unpack(substr($data,0,24));	// unpack 24bytes into 6 data 
 			if (count($ret)<6){
 				if ($get_type==OWNET_MSG_DIR_ALL)	// old servers
-					return($this->get($path,OWNET_MSG_DIR,$return_full_info_array,$parse_php_type));	
+					return($this->get($path,OWNET_MSG_DIR,$return_full_info_array,$parse_php_type));
 				$data=substr($data,0,24);
 				trigger_error("Error unpacking data get#1 [".strlen($data)."] ".$data,E_USER_NOTICE);
 				$this->disconnect();
@@ -513,7 +517,7 @@ class OWNet{
 							$ret['data_php']=bcadd($ret['data_php'],0,0);	// integer (using bcmath for bigger precision)
 						}elseif($type[0]=='u'){
 							$ret['data_php']=bcadd($ret['data_php'],0,0);	// unsigned integer (using bcmath for bigger precision)
-							if (bccmp($ret['data_php'],0,0)==-1){
+							if (bccomp($ret['data_php'],0,0)==-1){
 								$ret['data_php']=substr($ret['data_php'],1);		// be shure that it's unsigned
 							}
 						}elseif(in_array($type[0],array('f','t',chr(152)))){
@@ -550,7 +554,7 @@ class OWNet{
 		}
 		$this->disconnect();	// disconnect from server (dir listing)
 		if ($get_type==OWNET_MSG_DIR_ALL && $return===NULL)	// old servers
-			return($this->get($path,OWNET_MSG_DIR,$return_full_info_array,$parse_php_type));	
+			return($this->get($path,OWNET_MSG_DIR,$return_full_info_array,$parse_php_type));
 		if ($return!==NULL){
 			if ($this->use_swig_dir && !$return_full_info_array && $get_type==OWNET_MSG_DIR)
 				if (is_array($return))
@@ -608,7 +612,7 @@ class OWNet{
 			}
 		}
 		unset($type,$tmp,$tmp_v,$variavel,$ow,$c);
-	
+		
 		$this->disconnect();
 		$this->connect();
 		if (!$this->link_connected){
@@ -626,7 +630,7 @@ class OWNet{
 			trigger_error("Can't write to resource set#2",E_USER_NOTICE);
 			return(false);	// error sending value
 		}
-
+		
 		$data='';$tmp_ret='';
 		$start=microtime(1);	// start timeout counter
 		while(1){
@@ -755,7 +759,7 @@ array(9) {
     [3]=>    int(258)
     [4]=>    int(5)
     [5]=>    int(0)
-    ["data"]=>    string(42) "bus.0athaðãaPÜa»a0"
+    ["data"]=>    string(42) "bus.0athaï¿½ï¿½aPï¿½aï¿½ï¿½a0"
     ["data_len"]=>    int(42)
     ["data_php"]=>    string(5) "bus.0"
   }
@@ -801,7 +805,7 @@ array(9) {
     [3]=>    int(258)
     [4]=>    int(16)
     [5]=>    int(0)
-    ["data"]=>    string(42) "/10.E8C1C9000800P×aàÑa »a0"
+    ["data"]=>    string(42) "/10.E8C1C9000800Pï¿½aï¿½ï¿½aï¿½ï¿½a0"
     ["data_len"]=>    int(42)
     ["data_php"]=>    string(16) "/10.E8C1C9000800"
   }
@@ -813,7 +817,7 @@ array(9) {
     [3]=>    int(258)
     [4]=>    int(16)
     [5]=>    int(0)
-    ["data"]=>    string(42) "/10.54FDED000800P×aàÑa »a0"
+    ["data"]=>    string(42) "/10.54FDED000800Pï¿½aï¿½ï¿½aï¿½ï¿½a0"
     ["data_len"]=>    int(42)
     ["data_php"]=>    string(16) "/10.54FDED000800"
   }
@@ -825,7 +829,7 @@ array(9) {
     [3]=>    int(258)
     [4]=>    int(16)
     [5]=>    int(0)
-    ["data"]=>    string(42) "/10.6F7EC9000800P×aàÑa »a0"
+    ["data"]=>    string(42) "/10.6F7EC9000800Pï¿½aï¿½ï¿½aï¿½ï¿½a0"
     ["data_len"]=>    int(42)
     ["data_php"]=>    string(16) "/10.6F7EC9000800"
   }
@@ -837,7 +841,7 @@ array(9) {
     [3]=>    int(258)
     [4]=>    int(16)
     [5]=>    int(0)
-    ["data"]=>    string(42) "/28.924FE0000000P×aàÑa »a0"
+    ["data"]=>    string(42) "/28.924FE0000000Pï¿½aï¿½ï¿½aï¿½ï¿½a0"
     ["data_len"]=>    int(42)
     ["data_php"]=>    string(16) "/28.924FE0000000"
   }
@@ -849,7 +853,7 @@ array(9) {
     [3]=>    int(258)
     [4]=>    int(16)
     [5]=>    int(0)
-    ["data"]=>    string(42) "/28.5D59E0000000P×aàÑa »a0"
+    ["data"]=>    string(42) "/28.5D59E0000000Pï¿½aï¿½ï¿½aï¿½ï¿½a0"
     ["data_len"]=>    int(42)
     ["data_php"]=>    string(16) "/28.5D59E0000000"
   }
@@ -883,4 +887,3 @@ float(28.625)
 bool(true)
 
 */
-?>
